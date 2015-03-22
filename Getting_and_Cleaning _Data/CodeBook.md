@@ -36,5 +36,5 @@ For the tidy data set it is provided:
 
 - Average of each of these above variables for each activity and each subject
 
-All the variable names of the average of these variables are suffixed by "-Ave".
+All the variable names of the average of these variables are suffixed by "-Ave", from which they were derived.
 
