@@ -14,8 +14,6 @@ There are five classifications of this exercise, one method is the correct form 
 library(caret)
 library(rpart)
 library(rpart.plot)
-library(RColorBrewer)
-library(rattle)
 library(randomForest)
 ```
 
