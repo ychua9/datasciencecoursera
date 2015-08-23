@@ -1,0 +1,104 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "Chua Yuanwei"
+output: html_document
+---
+
+## Introduction
+The goal of the project is to quantify the quality of barbell bicep curls done by 6 participants, using data from accelerometers on the belt, forearm, arm, and dumbell of the participants. The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+There are five classifications of this exercise, one method is the correct form of the exercise while the other four are common mistakes: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+## Data Preprocessing
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+```
+
+### Loading the Data
+The training data is available from: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data is available from:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+After downloading the data from the sources, the two csv files are read into two data frames.
+```{r}
+trainRaw <- read.csv("pml-training.csv")
+testRaw <- read.csv("pml-testing.csv")
+dim(trainRaw)
+dim(testRaw)
+```
+The training data set contains 19622 observations of 160 variables, while the testing data set contains 20 observations of 160 variables. The “classe” variable in the training set is the label of the classifications.
+
+### Cleaning Data
+In this step, we clean the data by removing observations with missing values.
+```{r}
+trainRaw <- trainRaw[, colSums(is.na(trainRaw)) == 0] 
+testRaw <- testRaw[, colSums(is.na(testRaw)) == 0] 
+classe <- trainRaw$classe
+trainRemove <- grepl("^X|timestamp|window", names(trainRaw))
+trainRaw <- trainRaw[, !trainRemove]
+trainCleaned <- trainRaw[, sapply(trainRaw, is.numeric)]
+trainCleaned$classe <- classe
+testRemove <- grepl("^X|timestamp|window", names(testRaw))
+testRaw <- testRaw[, !testRemove]
+testCleaned <- testRaw[, sapply(testRaw, is.numeric)]
+```
+
+To avoid the risk of overfitting, we next check for covariates that have virtually no variablility.
+```{r}
+nearZeroVar(trainCleaned, saveMetrics=TRUE)
+```
+Given that all of the near zero variance variables (nzv) are FALSE, there's no need to eliminate any covariates due to lack of variablility.
+
+### Slicing the Training Data
+There are 19,622 observations in the training set, so in order to reduce time and to be able to perform cross-validation, a training subset is created with 60% of the original training data set to be used for training and the remaining 40% to be used as the testing set (before final testing is performed).
+```{r}
+set.seed(22519) # For reproducibile purpose
+inTrain <- createDataPartition(y=trainCleaned$classe, p=0.6, list=FALSE)
+trainData <- trainCleaned[inTrain, ]; testData <- trainCleaned[-inTrain, ]
+dim(trainData); dim(testData)
+```
+
+## Tree-Based Models for Prediction
+Two tree-based models, rpart and random forest, will be built and their performances compared.
+
+### rpart Model
+As the outcomes are categorical (nominal), a decision tree was built using the method rpart.
+```{r}
+rpartTree <- rpart(classe ~ ., data=trainData, method="class")
+prp(rpartTree)
+predictRPart <- predict(rpartTree, testData, type = "class")
+confusionMatrix(predictRPart, testData$classe)
+accuracy <- postResample(predictRPart, testData$classe)
+accuracy
+oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRPart)$overall[1])
+oose
+```
+The estimated accuracy of the rpart model is 75.76% and the estimated out-of-sample error is 24.24%.
+
+### Random Forests Model
+```{r}
+rfTree <- randomForest(classe ~. , data=trainData)
+predictRF <- predict(rfTree, testData, type = "class")
+confusionMatrix(predictRF, testData$classe)
+accuracy <- postResample(predictRF, testData$classe)
+accuracy
+oose <- 1 - as.numeric(confusionMatrix(testData$classe, predictRF)$overall[1])
+oose
+```
+The estimated accuracy of the Random Forests model is 99.39% and the estimated out-of-sample error is 0.61%.
+
+As expected, Random Forests yielded better results. That is because it generates a large number of bootstrapped trees (based on random samples of variables) and then classifies a case for each tree in this new "forest". A final predicted outcome is decided by combining the results across all of the trees.
+
+## Predicting for Test Data Set
+Since Random Forests is a better predictor, we apply the model to the original testing data set downloaded from the data source.
+```{r}
+result <- predict(rfTree, testCleaned, type = "class")
+result
+```
