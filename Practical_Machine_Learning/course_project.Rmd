@@ -66,10 +66,10 @@ dim(trainData); dim(testData)
 ```
 
 ## Tree-Based Models for Prediction
-Two tree-based models, rpart and random forest, will be built and their performances compared.
+Two tree-based models, rpart and random forest, are built and their performances compared.
 
 ### rpart Model
-As the outcomes are categorical (nominal), a decision tree was built using the method rpart.
+As the outcomes are categorical (nominal), a decision tree is built using the method rpart.
 ```{r}
 rpartTree <- rpart(classe ~ ., data=trainData, method="class")
 prp(rpartTree)
